@@ -238,7 +238,7 @@ def main():
     for key, _ in SEBS_BENCHMARKS:
         parser.add_argument(
             f"--dir_path_{key}",
-            required=True,
+            default=None,
             help=f"Path to {key} benchmark output directory (plain, compressed)"
         )
         parser.add_argument(
@@ -249,7 +249,7 @@ def main():
         )
         parser.add_argument(
             f"--dir_path_{key}_cosandbox",
-            required=True,
+            default=None,
             help=f"Path to {key} with co-sandbox benchmark output directory"
         )
     parser.add_argument(
@@ -270,14 +270,24 @@ def main():
 
     args = parser.parse_args()
 
+    # Filter to benchmarks where both plain and cosandbox dirs are supplied.
+    active_benchmarks = [
+        (key, label) for key, label in SEBS_BENCHMARKS
+        if getattr(args, f"dir_path_{key}") is not None
+        and getattr(args, f"dir_path_{key}_cosandbox") is not None
+    ]
+
+    if not active_benchmarks:
+        parser.error("No benchmarks specified. Provide at least one --dir_path_<benchmark> and --dir_path_<benchmark>_cosandbox pair.")
+
     if args.show_uncompressed:
-        for key, _ in SEBS_BENCHMARKS:
+        for key, _ in active_benchmarks:
             if getattr(args, f"dir_path_{key}_uncompressed") is None:
                 parser.error(f"--dir_path_{key}_uncompressed is required when --show-uncompressed is set")
 
     # Collect timing data for each benchmark.
     data = {}
-    for key, label in SEBS_BENCHMARKS:
+    for key, label in active_benchmarks:
         plain_dir = getattr(args, f"dir_path_{key}")
         cosandbox_dir = getattr(args, f"dir_path_{key}_cosandbox")
         entry = {
@@ -297,7 +307,7 @@ def main():
     breakdown = None
     if args.show_breakdown and not args.show_uncompressed:
         breakdown = {}
-        for key, _ in SEBS_BENCHMARKS:
+        for key, _ in active_benchmarks:
             plain_dir     = getattr(args, f"dir_path_{key}")
             cosandbox_dir = getattr(args, f"dir_path_{key}_cosandbox")
             breakdown[key] = {
@@ -305,7 +315,7 @@ def main():
                 'with_cosandbox': get_setup_and_init_times(cosandbox_dir, SEBS_PROC_NAME),
             }
 
-    keys = [k for k, _ in SEBS_BENCHMARKS]
+    keys = [k for k, _ in active_benchmarks]
     proc_labels   = [data[k]['label']         for k in keys]
     compressed    = [data[k]['compressed']     or 0 for k in keys]
     with_cosandbox = [data[k]['with_cosandbox'] or 0 for k in keys]
@@ -401,7 +411,7 @@ def main():
 
     print("\nSummary:")
     print("=" * 100)
-    for key, label in SEBS_BENCHMARKS:
+    for key, label in active_benchmarks:
         c  = data[key]['compressed']
         u  = data[key].get('uncompressed')
         cs = data[key]['with_cosandbox']
