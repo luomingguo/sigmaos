@@ -130,69 +130,77 @@ func GetStartCmdConstructor(rps int, dur time.Duration, dummyProc, lcProc, prewa
 }
 
 // Construct command string to run BE imgresize multiplexing benchmark
-func GetBEImgResizeMultiplexingCmd(bcfg *BenchConfig, ccfg *ClusterConfig) string {
-	const (
-		debugSelectors string = "\"TEST;BENCH;\""
-	)
-	dialproxy := ""
-	if bcfg.NoNetproxy {
-		dialproxy = "--nodialproxy"
+func GetBEImgResizeMultiplexingCmdConstructor(nRealm int, sleep time.Duration, imgCfg *benchmarks.ImgBenchConfig) GetBenchCmdFn {
+	return func(bcfg *BenchConfig, ccfg *ClusterConfig) string {
+		const (
+			debugSelectors string = "\"TEST;BENCH;\""
+		)
+		dialproxy := ""
+		if bcfg.NoNetproxy {
+			dialproxy = "--nodialproxy"
+		}
+		overlays := ""
+		if bcfg.Overlays {
+			overlays = "--overlays"
+		}
+		cfgJSON, err := imgCfg.Marshal()
+		if err != nil {
+			db.DFatalf("Err marshal img config: %v", err)
+		}
+		return fmt.Sprintf("export SIGMADEBUG=%s; go clean -testcache; "+
+			"go test -v sigmaos/benchmarks -timeout 0 --no-shutdown %s %s --etcdIP %s --tag %s "+
+			"--run TestRealmBalanceImgResizeImgResize "+
+			"--sleep %s "+
+			"--nrealm %d "+
+			"--img_bench_cfg='%s' "+
+			"> /tmp/bench.out 2>&1",
+			debugSelectors,
+			dialproxy,
+			overlays,
+			ccfg.LeaderNodeIP,
+			bcfg.Tag,
+			sleep.String(),
+			nRealm,
+			cfgJSON,
+		)
 	}
-	overlays := ""
-	if bcfg.Overlays {
-		overlays = "--overlays"
-	}
-	return fmt.Sprintf("export SIGMADEBUG=%s; go clean -testcache; "+
-		"go test -v sigmaos/benchmarks -timeout 0 --no-shutdown %s %s --etcdIP %s --tag %s "+
-		"--run TestRealmBalanceImgResizeImgResize "+
-		"--sleep 15s "+
-		"--n_imgresize 10 "+
-		"--imgresize_nround 300 "+
-		"--n_imgresize_per 25 "+
-		"--imgresize_path name/ux/~local/8.jpg "+
-		"--imgresize_mcpu 0 "+
-		"--imgresize_mem 1500 "+
-		"--nrealm 4 "+
-		"> /tmp/bench.out 2>&1",
-		debugSelectors,
-		dialproxy,
-		overlays,
-		ccfg.LeaderNodeIP,
-		bcfg.Tag,
-	)
 }
 
-// Construct command string to run BE imgresize multiplexing benchmark
-func GetBEImgResizeRPCMultiplexingCmd(bcfg *BenchConfig, ccfg *ClusterConfig) string {
-	const (
-		debugSelectors string = "\"TEST;BENCH;IMGD;\""
-	)
-	dialproxy := ""
-	if bcfg.NoNetproxy {
-		dialproxy = "--nodialproxy"
+// Construct command string to run BE imgresize RPC multiplexing benchmark
+func GetBEImgResizeRPCMultiplexingCmdConstructor(nRealm int, sleep time.Duration, imgCfg *benchmarks.ImgBenchConfig) GetBenchCmdFn {
+	return func(bcfg *BenchConfig, ccfg *ClusterConfig) string {
+		const (
+			debugSelectors string = "\"TEST;BENCH;IMGD;\""
+		)
+		dialproxy := ""
+		if bcfg.NoNetproxy {
+			dialproxy = "--nodialproxy"
+		}
+		overlays := ""
+		if bcfg.Overlays {
+			overlays = "--overlays"
+		}
+		cfgJSON, err := imgCfg.Marshal()
+		if err != nil {
+			db.DFatalf("Err marshal img config: %v", err)
+		}
+		return fmt.Sprintf("export SIGMADEBUG=%s; go clean -testcache; "+
+			"go test -v sigmaos/benchmarks -timeout 0 --no-shutdown %s %s --etcdIP %s --tag %s "+
+			"--run TestRealmBalanceImgResizeRPCImgResizeRPC "+
+			"--sleep %s "+
+			"--nrealm %d "+
+			"--img_bench_cfg='%s' "+
+			"> /tmp/bench.out 2>&1",
+			debugSelectors,
+			dialproxy,
+			overlays,
+			ccfg.LeaderNodeIP,
+			bcfg.Tag,
+			sleep.String(),
+			nRealm,
+			cfgJSON,
+		)
 	}
-	overlays := ""
-	if bcfg.Overlays {
-		overlays = "--overlays"
-	}
-	return fmt.Sprintf("export SIGMADEBUG=%s; go clean -testcache; "+
-		"go test -v sigmaos/benchmarks -timeout 0 --no-shutdown %s %s --etcdIP %s --tag %s "+
-		"--run TestRealmBalanceImgResizeRPCImgResizeRPC "+
-		"--sleep 10s "+
-		"--imgresize_tps 500 "+
-		"--imgresize_dur 20s "+
-		"--imgresize_nround 43 "+
-		"--imgresize_path name/ux/~local/8.jpg "+
-		"--imgresize_mcpu 0 "+
-		"--imgresize_mem 2500 "+
-		"--nrealm 4 "+
-		"> /tmp/bench.out 2>&1",
-		debugSelectors,
-		dialproxy,
-		overlays,
-		ccfg.LeaderNodeIP,
-		bcfg.Tag,
-	)
 }
 
 // Construct command string to run MR benchmark.

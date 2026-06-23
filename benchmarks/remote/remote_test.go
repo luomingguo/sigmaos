@@ -294,7 +294,7 @@ func TestMR(t *testing.T) {
 	)
 	// Cluster configuration parameters
 	const (
-		driverVM          int  = 0
+		driverVM          int  = 12
 		numProcqOnlyNodes int  = 1
 		turboBoost        bool = true
 		useGVisor         bool = false
@@ -854,7 +854,7 @@ func TestBEImgResizeMultiplexing(t *testing.T) {
 	)
 	// Cluster configuration parameters
 	const (
-		driverVM          int  = 0
+		driverVM          int  = 12
 		numNodes          int  = 8 // 24
 		numCoresPerNode   uint = 4
 		numProcqOnlyNodes int  = 0
@@ -870,7 +870,26 @@ func TestBEImgResizeMultiplexing(t *testing.T) {
 		return
 	}
 	db.DPrintf(db.ALWAYS, "Benchmark configuration:\n%v", ts)
-	ts.RunStandardBenchmark(benchName, driverVM, GetBEImgResizeMultiplexingCmd, numNodes, numCoresPerNode, numFullNodes, numProcqOnlyNodes, turboBoost, useGVisor)
+	imgCfg := &benchmarks.ImgBenchConfig{
+		JobCfg: &imgresize.ImgdJobConfig{
+			Job:                 "img-job",
+			WorkerMcpu:          proc.Tmcpu(0),
+			WorkerMem:           proc.Tmem(1500),
+			Persist:             false,
+			NRounds:             300,
+			ImgdMcpu:            proc.Tmcpu(1000),
+			UseSPProxy:          false,
+			UseCoSandbox:        false,
+			UseS3Clnt:           false,
+			WorkerCoSandboxMcpu: proc.Tmcpu(0),
+			WorkerCoSandboxMem:  proc.Tmem(0),
+			FTTaskSrvMcpu:       proc.Tmcpu(1000),
+		},
+		InputPath:      "name/ux/~local/8.jpg",
+		NTasks:         10,
+		NInputsPerTask: 25,
+	}
+	ts.RunStandardBenchmark(benchName, driverVM, GetBEImgResizeMultiplexingCmdConstructor(4, 5*time.Second, imgCfg), numNodes, numCoresPerNode, numFullNodes, numProcqOnlyNodes, turboBoost, useGVisor)
 }
 
 // Test multiplexing Best Effort ImgResize jobs.
@@ -880,13 +899,18 @@ func TestBEImgResizeRPCMultiplexing(t *testing.T) {
 	)
 	// Cluster configuration parameters
 	const (
-		driverVM          int  = 0
-		numNodes          int  = 26
+		driverVM          int  = 12
+		numNodes          int  = 10
 		numCoresPerNode   uint = 4
 		numProcqOnlyNodes int  = 2
 		numFullNodes      int  = numNodes - numProcqOnlyNodes
 		turboBoost        bool = false
 		useGVisor         bool = false
+	)
+	// Bench params
+	const (
+		sleepBetweenRealms time.Duration = 5 * time.Second
+		nRealms            int           = 4
 	)
 	ts, err := NewTstate(t)
 	if !assert.Nil(ts.t, err, "Creating test state: %v", err) {
@@ -896,7 +920,29 @@ func TestBEImgResizeRPCMultiplexing(t *testing.T) {
 		return
 	}
 	db.DPrintf(db.ALWAYS, "Benchmark configuration:\n%v", ts)
-	ts.RunStandardBenchmark(benchName, driverVM, GetBEImgResizeRPCMultiplexingCmd, numNodes, numCoresPerNode, numFullNodes, numProcqOnlyNodes, turboBoost, useGVisor)
+	imgCfg := &benchmarks.ImgBenchConfig{
+		JobCfg: &imgresize.ImgdJobConfig{
+			Job:                 "img-job",
+			WorkerMcpu:          proc.Tmcpu(0),
+			WorkerMem:           proc.Tmem(2500),
+			Persist:             false,
+			NRounds:             43,
+			ImgdMcpu:            proc.Tmcpu(1000),
+			UseSPProxy:          false,
+			UseCoSandbox:        false,
+			UseS3Clnt:           false,
+			WorkerCoSandboxMcpu: proc.Tmcpu(0),
+			WorkerCoSandboxMem:  proc.Tmem(0),
+			FTTaskSrvMcpu:       proc.Tmcpu(1000),
+		},
+		InputPath:      "name/ux/~local/8.jpg",
+		NTasks:         20000,
+		NInputsPerTask: 43,
+		//		Durs:           []time.Duration{20 * time.Second},
+		//		MaxRPS:         []int{500},
+		// Duration-based spawning no longer supported
+	}
+	ts.RunStandardBenchmark(benchName, driverVM, GetBEImgResizeRPCMultiplexingCmdConstructor(nRealms, sleepBetweenRealms, imgCfg), numNodes, numCoresPerNode, numFullNodes, numProcqOnlyNodes, turboBoost, useGVisor)
 }
 
 func TestLCBEHotelImgResizeMultiplexing(t *testing.T) {
